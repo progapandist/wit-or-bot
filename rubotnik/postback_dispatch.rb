@@ -1,6 +1,7 @@
 module Rubotnik
   # Routing for postbacks
   class PostbackDispatch
+    attr_accessor :nlu
     include Commands
 
     def initialize(postback)
@@ -8,6 +9,7 @@ module Rubotnik
       p @postback.class
       p @postback
       @user = UserStore.instance.find_or_create_user(@postback.sender['id'])
+      @nlu = nil
     end
 
     def route(&block)
