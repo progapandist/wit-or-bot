@@ -1,13 +1,15 @@
 module Rubotnik
   # Routing for messages
   class MessageDispatch
+    attr_accessor :nlu
     include Commands
 
-    def initialize(message)
+    def initialize(message, nlu: nil)
       @message = message
       p @message.class
       p @message
       @user = UserStore.instance.find_or_create_user(@message.sender['id'])
+      @nlu = nlu
     end
 
     def route(&block)
@@ -61,7 +63,7 @@ module Rubotnik
       @user.reset_command
     end
 
-    def wit_bind(to: nil)
+    def nlu_bind(to: nil)
       if @matched
         @user.reset_command
         return
@@ -71,7 +73,7 @@ module Rubotnik
         yield
         return
       else
-        execute(to) if to 
+        execute(to) if to
       end
     end
 

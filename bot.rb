@@ -20,17 +20,13 @@ Facebook::Messenger::Subscriptions.subscribe(access_token: ENV['ACCESS_TOKEN'])
 ####################### ROUTE MESSAGES HERE ################################
 
 Bot.on :message do |message|
-  Rubotnik::MessageDispatch.new(message).route do
+  # setting up NLU agent at initialize
+  # Now you can use @nlu property anywhere in the message namespace
 
-    bind 'ok', 'fine', 'got it', 'more', 'next', 'thanks', 'cool' do
-      say "Ask another question!"
-    end
+  wit = Rubotnik::WitUnderstander.new('ZI243GVZYMZFWGIFMGI4PNUNLGVFLFUZ')
+  Rubotnik::MessageDispatch.new(message, nlu: wit).route do
 
-    bind 'hello', 'hey', 'yo', 'hi' do
-     say 'Hi! I can make decisions for you. I understand different kinds of questions'
-    end
-
-    wit_bind to: :nlu_handle_questions
+    nlu_bind to: :nlu_handle_questions
 
     # default do
     #   say "ok"
