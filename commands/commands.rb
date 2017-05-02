@@ -5,6 +5,8 @@ require_relative '../ui/ui'
 # and will exist in a shared namespace.
 module Commands
 
+  # TODO: Allow to correct each OR case 
+
   def question_type(value)
     ent_values = @nlu.entity_values(@message.text, :intent)
     !ent_values.empty? && ent_values.include?(value)
