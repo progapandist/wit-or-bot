@@ -63,6 +63,8 @@ module Commands
     elsif question_type('who_question')
       puts "who question"
     else # No question types detected
+      # store unrecognized input in a session
+      @user.session[:original_text] = @message.text
       say "Was that a question?",
       quick_replies: UI::QuickReplies.build(%w[Yes YES], %w[No NO])
       next_command :handle_was_it_a_question
@@ -138,7 +140,6 @@ module Commands
       stop_thread
     else
       say "What type of question?", quick_replies: question_types_replies
-      @user.session[:original_text] = @message.text
       next_command :correct_question_type
     end
   end
@@ -161,6 +162,7 @@ module Commands
     # It's not an OR question, so we don't have to ask for entities
     if question != 'or_question'
       @nlu.train(original_text, trait_entity: trait)
+      say "Thank you for cooperation! I just got a bit smarter"
       return
     end
 
