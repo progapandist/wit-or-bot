@@ -66,7 +66,7 @@ module Rubotnik
       words.each.map do |word|
         {
           "entity" => entity_name.to_s,
-          "value" => "entity"
+          "value" => word
         }.merge(substring_offset(string, word))
       end
     end
