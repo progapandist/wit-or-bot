@@ -1,14 +1,14 @@
 # A model for the user
 class User
   attr_reader :id
-  attr_accessor :answers
+  attr_accessor :session
 
   def initialize(id)
     @id = id
     @commands = []
     # This hash is used for the sake of example.
     # Use your own logic to collect data.
-    @answers = {}
+    @session = {}
   end
 
   def current_command

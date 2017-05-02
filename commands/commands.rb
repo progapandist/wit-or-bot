@@ -138,13 +138,16 @@ module Commands
       stop_thread
     else
       say "What type of question?", quick_replies: question_types_replies
-      next_command :correct_question_type # HOW DO WE PASS AN ARGUMENT? Store in User?
-      @message.text
+      @user.session[:original_text] = @message.text
+      next_command :correct_question_type
     end
   end
 
   # TODO: BROKEN
-  def correct_question_type(original_text)
+  def correct_question_type
+    # retrieve original text from User
+    original_text = @user.session[:original_text]
+
     # Guard for when we don't have quick replies
     if @message.respond_to?(:quick_reply) == false
       say "You did not give me a chance to learn, but thanks for cooperation anyway!"
@@ -163,12 +166,13 @@ module Commands
 
     # Ask for correct entities if it was an OR question
     say "What were the choices? Separate them by 'or' or a comma. Use exact wording, please. Otherwise I won't learn on my mistakes"
+    @user.session[:trait] = trait
     next_command :correct_entities
-    return original_text, trait
   end
 
   def correct_entities(*args)
-    original_text, trait = args
+    original_text = @user.session[:original_text]
+    trait = @user.session[:trait]
     choices = Rubotnik::WitUnderstander.build_word_entities(original_text,
                                                             @message.text,
                                                             :option)
