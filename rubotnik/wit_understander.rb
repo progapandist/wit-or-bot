@@ -64,7 +64,10 @@ module Rubotnik
       words = substrings.split(", ") # split on comma if not separated by 'or's
       words = substrings.split(" or ") if substrings =~ / or /
       words.each.map do |word|
-        { "entity" => entity_name.to_s }.merge(substring_offset(string, word))
+        {
+          "entity" => entity_name.to_s,
+          "value" => "entity"
+        }.merge(substring_offset(string, word))
       end
     end
 
