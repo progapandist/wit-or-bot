@@ -11,7 +11,7 @@ module Rubotnik
     # TODO: Mention explicit version setting in README
     def initialize(token, version: nil)
       @bearer = "Bearer #{token}"
-      @version = version || Date.today.to_s
+      @version = '20170307'
       @cache = {}
     end
 
