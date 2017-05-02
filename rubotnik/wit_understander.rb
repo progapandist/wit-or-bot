@@ -5,7 +5,7 @@ require 'json'
 module Rubotnik
   class WitUnderstander
     include HTTParty
-    # debug_output $stdout
+    debug_output $stdout
     base_uri 'https://api.wit.ai'
 
     # TODO: Mention explicit version setting in README
@@ -28,7 +28,7 @@ module Rubotnik
       puts "made a request to Wit API"
       start = Time.now
       @cache[string] = JSON.parse(self.class.get('/message', options).body,
-                             symbolize_names: true)
+                                  symbolize_names: true)
       puts "Took #{Time.now - start} seconds"
       @cache[string]
     end
@@ -45,7 +45,7 @@ module Rubotnik
       }
       self.class.post('/samples', options)
     end
-    
+
     def entities(string)
       full_response(string)[:entities]
     end

@@ -5,8 +5,6 @@ require_relative '../ui/ui'
 # and will exist in a shared namespace.
 module Commands
 
-  # TODO: Let user train an app. Create WitTrainer class?
-
   def question_type(value)
     ent_values = @nlu.entity_values(@message.text, :intent)
     !ent_values.empty? && ent_values.include?(value)
@@ -17,33 +15,40 @@ module Commands
     !ent_values.empty? && ent_values.include?(value)
   end
 
-  def intents_present?
+  def intents_absent?
     @nlu.entity_values(@message.text, :intent).empty?
   end
 
   def nlu_handle_questions
+    # Wit processing will take a while, so we want to show activity
+    @message.mark_seen
     @message.typing_on
-    
+    # We are being greeted
     if @nlu.entities(@message.text).include?(:greetings)
       say "Hello! I can make decisions for you. Ask me a question"
       return
     end
-
-    # TODO: Why do we check for the presence of intents again?
-    if sentiment('negative') && intents_present?
+    # We are being thanked
+    if @nlu.entities(@message.text).include?(:thanks)
+      say "You're welcome!"
+      return
+    end
+    # Gauge sentiment
+    # Make sure intents are otherwise absent in a phrase
+    if sentiment('negative') && intents_absent?
       say "I'm sorry you feel this way :( I try to learn!"
       return
     end
 
-    if sentiment('positive') && intents_present?
-      say "I appreciate your feedback!"
+    if sentiment('positive') && intents_absent?
+      say "Thanks for being nice to me!"
       return
     end
-
+    # Reacting on different question types
     if question_type('yes_no_question')
       say %w[Yes No].sample
     elsif question_type('or_question')
-      handle_definite_or
+      handle_or_question
     elsif question_type('what_question')
       puts "what question"
       handle_what_question
@@ -57,43 +62,30 @@ module Commands
       puts "where question"
     elsif question_type('who_question')
       puts "who question"
-    else
-      say "Doesn't look like a question to me"
+    else # No question types detected
+      say "Was that a question?",
+      quick_replies: UI::QuickReplies.build(%w[Yes YES], %w[No NO])
+      next_command :handle_was_it_a_question
     end
     @message.typing_off
   end
 
+  # Handlers for question types
+
   def handle_what_question
-    @message.typing_on
     say "What are the options? Use 'or' to separate them"
-    @message.typing_off
   end
 
   def handle_when_question
-    @message.typing_on
     say "When do you think? Use 'or' to separate them"
-    @message.typing_off
   end
 
-  def handle_definite_or
-    @message.typing_on
+  def handle_or_question
     choice = @nlu.entity_values(@message.text, :option).sample
     say pos_pick_answer(choice)
-    @message.typing_off
   end
 
-  # TODO: REMOVE? handle_definite_or will do?
-  def handle_possible_or
-    if question_type('or_question')
-      @message.typing_on
-      choice = @nlu.entity_values(@message.text, :option).sample
-      say choice
-      @message.typing_off
-    else
-      say "doesn't look like an OR question to me, try again?"
-    end
-  end
-
+  # Compose the reply based on POS of the choice
 
   def pos_pick_answer(string)
     tagger = Rubotnik::Tagger.new
@@ -111,13 +103,78 @@ module Commands
   end
 
   def complement_verbs(string)
-    random = ["You should", "If I were you, I'd", "You better", "Certainly", "Probably", "Definitely", "I advice you to", "I urge you to"].sample
+    random = ["You should",
+              "If I were you, I'd",
+              "You better", "Certainly",
+              "Probably", "Definitely",
+              "I advice you to",
+              "I urge you to"].sample
     random + " " + string
   end
 
   def complement_non_verbs(string)
-    random = ["Go with", "I'd pick", "Settle on", "Definitely", "Probably", "Absolutely"].sample
+    random = ["Go with",
+              "I'd pick",
+              "Settle on",
+              "Definitely",
+              "Probably",
+              "Absolutely"].sample
     random + " " + string
+  end
+
+  # DEAL WITH LEARNING
+
+  def  question_types_replies
+    replies = [
+      ['OR Question', 'OR_QUESTION'],
+      ['YES/NO Question', 'YES_NO_QUESTION'],
+    ]
+    UI::QuickReplies.build(*replies)
+  end
+
+  def handle_was_it_a_question
+    if @message.quick_reply == "NO"
+      say "I wish I could tell you a joke, but I don't know how to do it yet. Ask me a question!"
+      stop_thread
+    else
+      say "What type of question?", quick_replies: question_types_replies
+      next_command :correct_question_type # HOW DO WE PASS AN ARGUMENT? Store in User?
+      @message.text
+    end
+  end
+
+  # TODO: BROKEN
+  def correct_question_type(original_text)
+    # Guard for when we don't have quick replies
+    if @message.respond_to?(:quick_reply) == false
+      say "You did not give me a chance to learn, but thanks for cooperation anyway!"
+      stop_thread
+      return
+    end
+
+    question = @message.quick_reply.downcase
+    trait = Rubotnik::WitUnderstander.build_trait_entity(:intent, question)
+
+    # It's not an OR question, so we don't have to ask for entities
+    if question != 'or_question'
+      @nlu.train(original_text, trait_entity: trait)
+      return
+    end
+
+    # Ask for correct entities if it was an OR question
+    say "What were the choices? Separate them by 'or' or a comma. Use exact wording, please. Otherwise I won't learn on my mistakes"
+    next_command :correct_entities
+    return original_text, trait
+  end
+
+  def correct_entities(*args)
+    original_text, trait = args
+    choices = Rubotnik::WitUnderstander.build_word_entities(original_text,
+                                                            @message.text,
+                                                            :option)
+    @nlu.train(original_text, trait_entity: trait, word_entities: choices)
+    say "Thank you for cooperation! I just got a bit smarter"
+    stop_thread
   end
 
 end

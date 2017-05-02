@@ -7,9 +7,9 @@ understander = Rubotnik::WitUnderstander.new("ZI243GVZYMZFWGIFMGI4PNUNLGVFLFUZ")
 # If first word is NN* — add a generic verb like "go with"
 # If first word is VB* — add modal like "should" or "you better"
 
-question = "hi there!"
+question = "thanks"
 
-p understander.entities(question).include?(:greetings)
+p understander.full_response(question)
 
 # answer = understander.entity_values(question, :option).sample
 

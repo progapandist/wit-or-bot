@@ -22,7 +22,6 @@ Facebook::Messenger::Subscriptions.subscribe(access_token: ENV['ACCESS_TOKEN'])
 Bot.on :message do |message|
   # setting up NLU agent at initialize
   # Now you can use @nlu property anywhere in the message namespace
-
   wit = Rubotnik::WitUnderstander.new('ZI243GVZYMZFWGIFMGI4PNUNLGVFLFUZ')
   Rubotnik::MessageDispatch.new(message, nlu: wit).route do
 
