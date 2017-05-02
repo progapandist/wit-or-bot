@@ -149,7 +149,7 @@ module Commands
     original_text = @user.session[:original_text]
 
     # Guard for when we don't have quick replies
-    if @message.respond_to?(:quick_reply) == false
+    unless @message.quick_reply
       say "You did not give me a chance to learn, but thanks for cooperation anyway!"
       stop_thread
       return
