@@ -25,11 +25,11 @@ Bot.on :message do |message|
   wit = Rubotnik::WitUnderstander.new('ZI243GVZYMZFWGIFMGI4PNUNLGVFLFUZ')
   Rubotnik::MessageDispatch.new(message, nlu: wit).route do
 
-    # nlu_bind to: :nlu_handle_questions
+    nlu_bind to: :nlu_handle_questions
 
-    default do
-      say "ok"
-    end
+    # default do
+    #   say "ok"
+    # end
 
   end
 end
