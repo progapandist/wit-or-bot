@@ -163,6 +163,7 @@ module Commands
     if question != 'or_question'
       @nlu.train(original_text, trait_entity: trait)
       say "Thank you for cooperation! I just got a bit smarter"
+      stop_thread
       return
     end
 
