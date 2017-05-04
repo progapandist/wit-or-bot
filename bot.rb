@@ -20,7 +20,7 @@ Facebook::Messenger::Subscriptions.subscribe(access_token: ENV['ACCESS_TOKEN'])
 ####################### ROUTE MESSAGES HERE ################################
 
 Bot.on :message do |message|
-  unless text_message?(message) # Guard against non-text messages
+  unless message.respond_to?(:text) && !message.text.nil? # Guard against non-text messages
     say "Haha"
     return
   end
