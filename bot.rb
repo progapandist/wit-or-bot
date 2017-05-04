@@ -25,11 +25,6 @@ Bot.on :message do |message|
   wit = Rubotnik::WitUnderstander.new('ZI243GVZYMZFWGIFMGI4PNUNLGVFLFUZ')
   Rubotnik::MessageDispatch.new(message, nlu: wit).route do
 
-    unless text_message? # Guard against non-text messages
-      say "Haha"
-      return
-    end
-
     nlu_bind to: :nlu_handle_questions
 
     # default do
