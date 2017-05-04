@@ -14,6 +14,7 @@ module Rubotnik
       @nlu = nlu
     end
 
+    # TODO: Update README! 
     def route(block_non_text: true, &block)
       return if block_non_text && !text_message?
 
