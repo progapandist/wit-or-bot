@@ -20,15 +20,15 @@ Facebook::Messenger::Subscriptions.subscribe(access_token: ENV['ACCESS_TOKEN'])
 ####################### ROUTE MESSAGES HERE ################################
 
 Bot.on :message do |message|
-  unless message.respond_to?(:text) && !message.text.nil? # Guard against non-text messages
-    message.reply(text: "Haha")
-    return
-  end
-
   # setting up NLU agent at initialize
   # Now you can use @nlu property anywhere in the message namespace
   wit = Rubotnik::WitUnderstander.new('ZI243GVZYMZFWGIFMGI4PNUNLGVFLFUZ')
   Rubotnik::MessageDispatch.new(message, nlu: wit).route do
+
+    unless text_message? # Guard against non-text messages
+      say "Haha"
+      return
+    end
 
     nlu_bind to: :nlu_handle_questions
 
