@@ -8,3 +8,5 @@ require_relative 'persistent_menu'
 require_relative 'tagger'
 # Require all files here
 module Rubotnik; end
+
+# TODO: Return @message and @user from a method? 

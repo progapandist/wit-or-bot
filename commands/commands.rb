@@ -5,7 +5,8 @@ require_relative '../ui/ui'
 # and will exist in a shared namespace.
 module Commands
 
-  # TODO: Allow to correct each OR case 
+  # TODO: Allow to correct each OR case
+  # TODO: Implement guard against non-text messages
 
   def question_type(value)
     ent_values = @nlu.entity_values(@message.text, :intent)
@@ -111,7 +112,7 @@ module Commands
               "If I were you, I'd",
               "You better", "Certainly",
               "Probably", "Definitely",
-              "I advice you to",
+              "I advise you to",
               "I urge you to"].sample
     random + " " + string
   end
