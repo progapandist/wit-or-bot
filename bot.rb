@@ -24,16 +24,16 @@ Bot.on :message do |message|
   # Now you can use @nlu property anywhere in the message namespace
   wit = Rubotnik::WitUnderstander.new('ZI243GVZYMZFWGIFMGI4PNUNLGVFLFUZ')
   Rubotnik::MessageDispatch.new(message, nlu: wit).route do
+    #
+    # disallow_non_text do
+    #   say "Haha"
+    # end && return
 
-    disallow_non_text do
-      say "Haha"
-    end && return 
+    # nlu_bind to: :nlu_handle_questions
 
-    nlu_bind to: :nlu_handle_questions
-
-    # default do
-    #   say "ok"
-    # end
+    default do
+      say "ok"
+    end
 
   end
 end
