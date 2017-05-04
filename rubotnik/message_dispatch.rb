@@ -59,7 +59,7 @@ module Rubotnik
     end
 
     def disallow_non_text
-      return if text_message
+      return if text_message?
       @user.reset_command
       yield if block_given?
     end
