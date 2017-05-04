@@ -27,7 +27,7 @@ Bot.on :message do |message|
 
     disallow_non_text do
       say "Haha"
-    end
+    end && return 
 
     nlu_bind to: :nlu_handle_questions
 
