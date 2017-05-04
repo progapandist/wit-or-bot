@@ -62,6 +62,7 @@ module Rubotnik
       return if text_message?
       @user.reset_command
       yield if block_given?
+      return 
     end
 
     def default
