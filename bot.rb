@@ -21,7 +21,7 @@ Facebook::Messenger::Subscriptions.subscribe(access_token: ENV['ACCESS_TOKEN'])
 
 Bot.on :message do |message|
   unless message.respond_to?(:text) && !message.text.nil? # Guard against non-text messages
-    say "Haha"
+    message.reply(text: "Haha")
     return
   end
 
