@@ -14,7 +14,9 @@ module Rubotnik
       @nlu = nlu
     end
 
-    def route(&block)
+    def route(block_non_text: true, &block)
+      return if block_non_text && !text_message?
+
       if @user.current_command
         command = @user.current_command
         execute(command)
@@ -58,11 +60,12 @@ module Rubotnik
       end
     end
 
+    # TODO
     def disallow_non_text
       return true if text_message?
       @user.reset_command
       yield if block_given?
-      return true 
+      return true
     end
 
     def default
