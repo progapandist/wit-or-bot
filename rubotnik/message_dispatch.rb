@@ -1,4 +1,4 @@
-# TODO: Guard against non-text messages in the DSL 
+# TODO: Guard against non-text messages in the DSL
 
 module Rubotnik
   # Routing for messages
@@ -56,6 +56,12 @@ module Rubotnik
         @user.assign_command(to)
         puts "Command #{to} is set for user #{@user.id}"
       end
+    end
+
+    def disallow_non_text
+      return if text_message
+      @user.reset_command
+      yield if block_given?
     end
 
     def default
