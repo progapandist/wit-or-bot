@@ -1,3 +1,5 @@
+# TODO: Guard against non-text messages in the DSL 
+
 module Rubotnik
   # Routing for messages
   class MessageDispatch
