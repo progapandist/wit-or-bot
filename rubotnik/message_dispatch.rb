@@ -14,10 +14,11 @@ module Rubotnik
       @nlu = nlu
     end
 
-    # TODO: Update README! 
+    # TODO: Update README! Probably should not be here — part of DSL?
+    # Allow location?
     def route(block_non_text: true, &block)
+      # Messaging namespace-wide guard against non-text
       return if block_non_text && !text_message?
-
       if @user.current_command
         command = @user.current_command
         execute(command)
@@ -61,14 +62,6 @@ module Rubotnik
       end
     end
 
-    # TODO
-    def disallow_non_text
-      return true if text_message?
-      @user.reset_command
-      yield if block_given?
-      return true
-    end
-
     def default
       return if @matched
       puts 'None of the commands were recognized' # log
@@ -89,7 +82,6 @@ module Rubotnik
         execute(to) if to
       end
     end
-
 
     def execute(command)
       method(command).call

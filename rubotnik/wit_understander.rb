@@ -15,7 +15,6 @@ module Rubotnik
       @cache = {}
     end
 
-    # TODO: Compare the key AND the value in the cache
     def full_response(string)
       options = {
         query: { v: @version, q: string },
@@ -67,7 +66,7 @@ module Rubotnik
         {
           "entity" => entity_name.to_s,
           "value" => word
-        }.merge(substring_offset(string, word)) # TODO: Do I need to build "start"/"end"?
+        }.merge(substring_offset(string, word)) # TODO: Do I need to build "start"/"end" at all?
       end
     end
 

@@ -6,7 +6,6 @@ require_relative '../ui/ui'
 module Commands
 
   # TODO: Allow to correct each OR case
-  # TODO: Implement guard against non-text messages
 
   def question_type(value)
     ent_values = @nlu.entity_values(@message.text, :intent)
@@ -39,7 +38,9 @@ module Commands
     # Gauge sentiment
     # Make sure intents are otherwise absent in a phrase
     if sentiment('negative') && intents_absent?
-      say "I'm sorry you feel this way :( I try to learn!"
+      say "I'm sorry, I'm still learning. Did I get your last phrase wrong?",
+          quick_replies: possible_error_replies
+      next_command :start_correction
       return
     end
 
@@ -47,6 +48,11 @@ module Commands
       say "Thanks for being nice to me!"
       return
     end
+
+    # Non-question ruled out, we can
+    # save a question to correct later, if needed
+    @user.session[:original_text] = @message.text
+
     # Reacting on different question types
     if question_type('yes_no_question')
       say %w[Yes No].sample
@@ -60,11 +66,11 @@ module Commands
       handle_when_question
 
     # TODO: implement
-
     elsif question_type('where_question')
       puts "where question"
     elsif question_type('who_question')
       puts "who question"
+
     else # No question types detected
       # store unrecognized input in a session
       @user.session[:original_text] = @message.text
@@ -91,7 +97,6 @@ module Commands
   end
 
   # Compose the reply based on POS of the choice
-
   def pos_pick_answer(string)
     tagger = Rubotnik::Tagger.new
     # array of 2-elements arrays. second element is a Brill tag
@@ -127,7 +132,15 @@ module Commands
     random + " " + string
   end
 
-  # DEAL WITH LEARNING
+  # USER TRAINING
+
+  def possible_error_replies
+    replies = [
+      ['Wrong question type', 'WRONG_TYPE'],
+      ['Wrong choices', 'WRONG_CHOICES']
+    ]
+    UI::QuickReplies.build(*replies)
+  end
 
   def  question_types_replies
     replies = [
@@ -137,24 +150,39 @@ module Commands
     UI::QuickReplies.build(*replies)
   end
 
-  def handle_was_it_a_question
-    if @message.quick_reply == "NO"
-      say "I wish I could tell you a joke, but I don't know how to do it yet. Ask me a question!"
-      stop_thread
+  def start_correction
+    if @message.quick_reply == 'WRONG_TYPE'
+      ask_correct_question_types
+    elsif @message.quick_reply == 'WRONG_CHOICES'
+      trait = Rubotnik::WitUnderstander.build_trait_entity(:intent, 'or_question')
+      ask_correct_entities(trait)
     else
-      say "What type of question?", quick_replies: question_types_replies
-      next_command :correct_question_type
+      say "Sorry! I can only learn if you correct me"
+      stop_thread
     end
   end
 
-  # TODO: BROKEN
+  def handle_was_it_a_question
+    if @message.quick_reply == 'NO'
+      say "I wish I could tell you a joke, but I don't know how to do it yet. Ask me a question!"
+      stop_thread
+    else
+      ask_correct_question_type
+    end
+  end
+
+  def ask_correct_question_type
+    say 'What type of question?', quick_replies: question_types_replies
+    next_command :correct_question_type
+  end
+
   def correct_question_type
     # retrieve original text from User
     original_text = @user.session[:original_text]
 
     # Guard for when we don't have quick replies
     unless @message.quick_reply
-      say "You did not give me a chance to learn, but thanks for cooperation anyway!"
+      say 'You did not give me a chance to learn, but thanks for cooperation anyway!'
       stop_thread
       return
     end
@@ -162,20 +190,27 @@ module Commands
     question = @message.quick_reply.downcase
     trait = Rubotnik::WitUnderstander.build_trait_entity(:intent, question)
 
+    # TODO: Answer "yes" or "no" right away
     # It's not an OR question, so we don't have to ask for entities
-    if question != 'or_question'
+    if question == 'yes_no_question'
       @nlu.train(original_text, trait_entity: trait)
       say "Thank you for cooperation! I just got a bit smarter"
+      say "By the way, the answer to your last question is #{%w[yes no].sample}"
       stop_thread
       return
     end
 
     # Ask for correct entities if it was an OR question
+    ask_correct_entities(trait)
+  end
+
+  def ask_correct_entities(correct_trait)
     say "What were the choices? Separate them by 'or' or a comma. Use exact wording, please. Otherwise I won't learn on my mistakes"
-    @user.session[:trait] = trait
+    @user.session[:trait] = correct_trait
     next_command :correct_entities
   end
 
+  # TODO: Pick a random entity right away
   def correct_entities(*args)
     original_text = @user.session[:original_text]
     trait = @user.session[:trait]
@@ -184,6 +219,7 @@ module Commands
                                                             :option)
     @nlu.train(original_text, trait_entity: trait, word_entities: choices)
     say "Thank you for cooperation! I just got a bit smarter"
+    say "By the way, the answer to your last question is #{choices.map {|h| h["value"]}.sample}"
     stop_thread
   end
 
