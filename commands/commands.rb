@@ -208,8 +208,8 @@ module Commands
   end
 
   def ask_correct_entities(correct_trait)
-    say "What were the choices? Separate them by 'or' or a comma. \
-    Use exact wording, please. Otherwise I won't learn on my mistakes :("
+    say "What were the choices? Separate them by 'or' or a comma. " \
+        "Use exact wording, please. Otherwise I won't learn on my mistakes :("
     @user.session[:trait] = correct_trait
     next_command :correct_entities
   end
