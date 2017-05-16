@@ -54,6 +54,7 @@ module Commands
 
     if sentiment('neutral') && intents_absent?
       say "Cool. Let's do another one."
+      return 
     end
 
     # Non-question ruled out, we can
