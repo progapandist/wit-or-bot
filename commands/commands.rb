@@ -138,7 +138,8 @@ module Commands
   def possible_error_replies
     replies = [
       ['Wrong question type', 'WRONG_TYPE'],
-      ['Wrong choices', 'WRONG_CHOICES']
+      ['Wrong choices', 'WRONG_CHOICES'],
+      ["It's OK", 'ALL_OK']
     ]
     UI::QuickReplies.build(*replies)
   end
@@ -195,10 +196,12 @@ module Commands
 
     # TODO: Answer "yes" or "no" right away
     # It's not an OR question, so we don't have to ask for entities
-    if question == 'yes_no_question'
+    if question != 'or_question'
       @nlu.train(original_text, trait_entity: trait)
       say "Thank you for cooperation! I just got a bit smarter"
-      say "By the way, the answer to your last question: #{%w[yes no].sample}"
+      if question == 'yes_no_question'
+        say "By the way, the answer to your last question: #{%w[yes no].sample}"
+      end
       stop_thread
       return
     end
