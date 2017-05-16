@@ -154,8 +154,8 @@ module Commands
     if @message.quick_reply == 'WRONG_TYPE'
       ask_correct_question_types
     elsif @message.quick_reply == 'WRONG_CHOICES'
-      trait = Rubotnik::WitUnderstander.build_trait_entity(:intent, 'or_question')
-      ask_correct_entities(trait)
+      trt = Rubotnik::WitUnderstander.build_trait_entity(:intent, 'or_question')
+      ask_correct_entities(trt)
     else
       say "Sorry! I can only learn if you correct me"
       stop_thread
@@ -164,7 +164,8 @@ module Commands
 
   def handle_was_it_a_question
     if @message.quick_reply == 'NO'
-      say "I wish I could tell you a joke, but I don't know how to do it yet. Ask me a question!"
+      say "I wish I could tell you a joke, but I don't know how to do it yet. \
+      Ask me a question!"
       stop_thread
     else
       ask_correct_question_type
@@ -182,7 +183,8 @@ module Commands
 
     # Guard for when we don't have quick replies
     unless @message.quick_reply
-      say 'You did not give me a chance to learn, but thanks for cooperation anyway!'
+      say 'You did not give me a chance to learn, \
+      but thanks for cooperation anyway!'
       stop_thread
       return
     end
@@ -221,7 +223,8 @@ module Commands
                                                             :option)
     @nlu.train(original_text, trait_entity: trait, word_entities: choices)
     say "Thank you for cooperation! I just got a bit smarter"
-    say "By the way, the answer to your last question: #{choices.map {|h| h["value"]}.sample}"
+    say "By the way, the answer to your \
+    last question: #{choices.map {|h| h["value"]}.sample}"
     stop_thread
   end
 
