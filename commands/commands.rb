@@ -37,9 +37,10 @@ module Commands
     # Gauge sentiment
     # Make sure intents are otherwise absent in a phrase
     if sentiment('negative') && intents_absent?
-      say "I'm sorry, I'm still learning. Did I get your last phrase wrong?",
-          quick_replies: possible_error_replies
-      say "The phrase was: #{@user.session[:original_text]}"
+      say "I'm sorry, I'm still learning. Did I get your last phrase wrong? \
+      The phrase was: #{@user.session[:original_text]}",
+      quick_replies: possible_error_replies
+      
       next_command :start_correction
       return
     end
@@ -132,7 +133,7 @@ module Commands
     random + " " + string
   end
 
-  # USER TRAINING
+  # USER-AIDED TRAINING
 
   def possible_error_replies
     replies = [
