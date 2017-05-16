@@ -24,18 +24,20 @@ module Commands
     # Wit processing will take a while, so we want to show activity
     @message.mark_seen
     @message.typing_on
+
     # We are being greeted
     if @nlu.entities(@message.text).include?(:greetings)
       say "Hello! I can make decisions for you. Ask me a question"
       return
     end
+
     # We are being thanked
     if @nlu.entities(@message.text).include?(:thanks)
       say "You're welcome!"
       return
     end
-    # Gauge sentiment
-    # Make sure intents are otherwise absent in a phrase
+
+    # Gauge sentiment. Make sure intents are otherwise absent in a phrase
     if sentiment('negative') && intents_absent?
       say "I'm sorry, I'm still learning. Did I get your last phrase wrong? " \
           "The phrase was: #{@user.session[:original_text]}",
@@ -46,8 +48,12 @@ module Commands
     end
 
     if sentiment('positive') && intents_absent?
-      say "Thanks for being nice to me!"
+      say "😎 Let's do another one!"
       return
+    end
+
+    if sentiment('neutral') && intents_absent?
+      say "Cool. Let's do another one."
     end
 
     # Non-question ruled out, we can
@@ -82,14 +88,14 @@ module Commands
     @message.typing_off
   end
 
-  # Handlers for question types
+  # HANDLERS FOR QUESTIONS TYPES
 
   def handle_what_question
     say "What are the options? Use 'or' to separate them"
   end
 
   def handle_when_question
-    say "When do you think? Use 'or' to separate them"
+    say "When do you think? Use 'or' to separate options"
   end
 
   def handle_or_question
@@ -97,7 +103,8 @@ module Commands
     say pos_pick_answer(choice)
   end
 
-  # Compose the reply based on POS of the choice
+  # POS-ENABLED REACTIONS
+
   def pos_pick_answer(string)
     tagger = Rubotnik::Tagger.new
     # array of 2-elements arrays. second element is a Brill tag
@@ -154,7 +161,7 @@ module Commands
 
   def start_correction
     if @message.quick_reply == 'WRONG_TYPE'
-      ask_correct_question_types
+      ask_correct_question_type
     elsif @message.quick_reply == 'WRONG_CHOICES'
       trt = Rubotnik::WitUnderstander.build_trait_entity(:intent, 'or_question')
       ask_correct_entities(trt)
