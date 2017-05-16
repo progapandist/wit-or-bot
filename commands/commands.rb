@@ -20,6 +20,7 @@ module Commands
     @nlu.entity_values(@message.text, :intent).empty?
   end
 
+  # TODO: Break up into smaller methods 
   def nlu_handle_questions
     # Wit processing will take a while, so we want to show activity
     @message.mark_seen
