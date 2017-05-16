@@ -227,8 +227,8 @@ module Commands
                                                             :option)
     @nlu.train(original_text, trait_entity: trait, word_entities: choices)
     say "Thank you for cooperation! I just got a bit smarter"
-    say "By the way, the answer to your \
-    last question: #{choices.map {|h| h["value"]}.sample}"
+    say "By the way, the answer to your " \
+        "last question: #{choices.map {|h| h["value"]}.sample}"
     stop_thread
   end
 
