@@ -26,15 +26,20 @@ module Rubotnik
       # make a request if not found in cache
       puts "made a request to Wit API"
       start = Time.now
-      @cache[string] = JSON.parse(self.class.get('/message', options).body,
-                                  symbolize_names: true)
+      @cache[string] = JSON.parse(
+        self.class.get('/message', options).body,
+        symbolize_names: true
+      )
       puts "Took #{Time.now - start} seconds"
       @cache[string]
     end
 
     def train(string, trait_entity: nil, word_entities: nil)
-      body = self.class.build_training_sample(string, trait_entity: trait_entity,
-                                              word_entities: word_entities)
+      body = self.class.build_training_sample(
+        string,
+        trait_entity: trait_entity,
+        word_entities: word_entities
+      )
       options = {
         headers: {
           'Authorization' => @bearer,

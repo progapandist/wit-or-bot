@@ -39,6 +39,7 @@ module Commands
 
     # Gauge sentiment. Make sure intents are otherwise absent in a phrase
     if sentiment('negative') && intents_absent?
+      # TODO: Only start the correction thread if the session has a question
       say "I'm sorry, I'm still learning. Did I get your last phrase wrong? " \
           "The phrase was: #{@user.session[:original_text]}",
           quick_replies: possible_error_replies
@@ -54,7 +55,7 @@ module Commands
 
     if sentiment('neutral') && intents_absent?
       say "Cool. Let's do another one."
-      return 
+      return
     end
 
     # Non-question ruled out, we can
@@ -174,8 +175,8 @@ module Commands
 
   def handle_was_it_a_question
     if @message.quick_reply == 'NO'
-      say "I wish I could tell you a joke, but I don't know how to do it yet. \
-      Ask me a question!"
+      say "I wish I could tell you a joke, but I don't know how to do it yet. " \
+          "Ask me a question!"
       stop_thread
     else
       ask_correct_question_type
