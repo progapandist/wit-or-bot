@@ -1,11 +1,10 @@
+# rubocop:disable Metrics/ModuleLength
 require 'httparty'
 require 'json'
 require_relative '../ui/ui'
 # Everything in this module will become private methods for Dispatch classes
 # and will exist in a shared namespace.
 module Commands
-
-  # TODO: Allow to correct each OR case
 
   def question_type(value)
     ent_values = @nlu.entity_values(@message.text, :intent)
@@ -40,6 +39,7 @@ module Commands
     if sentiment('negative') && intents_absent?
       say "I'm sorry, I'm still learning. Did I get your last phrase wrong?",
           quick_replies: possible_error_replies
+      say "The phrase was: #{@user.session[:original_text]}"
       next_command :start_correction
       return
     end
@@ -144,8 +144,8 @@ module Commands
 
   def  question_types_replies
     replies = [
-      ['OR Question', 'OR_QUESTION'],
-      ['YES/NO Question', 'YES_NO_QUESTION'],
+      ['Multiple choice', 'OR_QUESTION'],
+      ['Yes/No question', 'YES_NO_QUESTION'],
     ]
     UI::QuickReplies.build(*replies)
   end
@@ -195,7 +195,7 @@ module Commands
     if question == 'yes_no_question'
       @nlu.train(original_text, trait_entity: trait)
       say "Thank you for cooperation! I just got a bit smarter"
-      say "By the way, the answer to your last question is #{%w[yes no].sample}"
+      say "By the way, the answer to your last question: #{%w[yes no].sample}"
       stop_thread
       return
     end
@@ -205,12 +205,14 @@ module Commands
   end
 
   def ask_correct_entities(correct_trait)
-    say "What were the choices? Separate them by 'or' or a comma. Use exact wording, please. Otherwise I won't learn on my mistakes"
+    say "What were the choices? Separate them by 'or' or a comma. \
+    Use exact wording, please. Otherwise I won't learn on my mistakes :("
     @user.session[:trait] = correct_trait
     next_command :correct_entities
   end
 
-  # TODO: Pick a random entity right away
+  # TODO: make sure it won't break if user does not follow
+  # 'or' or 'comma' format
   def correct_entities(*args)
     original_text = @user.session[:original_text]
     trait = @user.session[:trait]
@@ -219,7 +221,7 @@ module Commands
                                                             :option)
     @nlu.train(original_text, trait_entity: trait, word_entities: choices)
     say "Thank you for cooperation! I just got a bit smarter"
-    say "By the way, the answer to your last question is #{choices.map {|h| h["value"]}.sample}"
+    say "By the way, the answer to your last question: #{choices.map {|h| h["value"]}.sample}"
     stop_thread
   end
 

@@ -26,7 +26,7 @@ Bot.on :message do |message|
   Rubotnik::MessageDispatch.new(message, nlu: wit).route do
 
     nlu_bind to: :nlu_handle_questions
-
+    
     # default do
     #   say "ok"
     # end
