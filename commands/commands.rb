@@ -62,6 +62,12 @@ module Commands
       return
     end
 
+    # Make sure user does not pry
+    if @message.text =~ /\byou[a-zA-Z']{,3}\b/i
+      say "We are not talking about me, sorry."
+      return
+    end
+
     # Non-question ruled out, we can
     # save a question to correct later, if needed
     @user.session[:original_text] = @message.text
