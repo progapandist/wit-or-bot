@@ -20,7 +20,7 @@ module Commands
     @nlu.entity_values(@message.text, :intent).empty?
   end
 
-  # TODO: Break up into smaller methods 
+  # TODO: Break up into smaller methods
   def nlu_handle_questions
     # Wit processing will take a while, so we want to show activity
     @message.mark_seen
@@ -41,9 +41,9 @@ module Commands
     # Gauge sentiment. Make sure intents are otherwise absent in a phrase
     if sentiment('negative') && intents_absent?
       # TODO: Only start the correction thread if the session has a question
-      say "I'm sorry, I'm still learning. Did I get your last phrase wrong? " \
-          "The phrase was: #{@user.session[:original_text]}",
-          quick_replies: possible_error_replies
+      say "I'm sorry, I'm still learning. Did I get your last phrase wrong? "
+      say "If I remember correctly, the phrase was: #{@user.session[:original_text]}",
+          quick_replies: possible_error_replies if @user.session.key?(:original_text)
 
       next_command :start_correction
       return
