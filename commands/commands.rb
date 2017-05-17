@@ -27,13 +27,13 @@ module Commands
     @message.typing_on
 
     # We are being greeted
-    if @nlu.entities(@message.text).include?(:greetings)
+    if @nlu.entities(@message.text).include?(:greetings) && intents_absent?
       say "Hello! I can make decisions for you. Ask me a question"
       return
     end
 
     # We are being thanked
-    if @nlu.entities(@message.text).include?(:thanks)
+    if @nlu.entities(@message.text).include?(:thanks) && intents_absent?
       say "You're welcome!"
       return
     end
@@ -41,11 +41,14 @@ module Commands
     # Gauge sentiment. Make sure intents are otherwise absent in a phrase
     if sentiment('negative') && intents_absent?
       # TODO: Only start the correction thread if the session has a question
-      say "I'm sorry, I'm still learning. Did I get your last phrase wrong? "
-      say "If I remember correctly, the phrase was: #{@user.session[:original_text]}",
-          quick_replies: possible_error_replies if @user.session.key?(:original_text)
-
-      next_command :start_correction
+      say "I'm sorry, I'm still learning!"
+      if @user.session.key?(:original_text)
+        say "Did I get your last phrase wrong? " \
+            "If I remember correctly, the phrase was: " \
+            "#{@user.session[:original_text]}",
+            quick_replies: possible_error_replies
+        next_command :start_correction
+      end
       return
     end
 
@@ -149,7 +152,7 @@ module Commands
     replies = [
       ['Wrong question type', 'WRONG_TYPE'],
       ['Wrong choices', 'WRONG_CHOICES'],
-      ["It's OK", 'ALL_OK']
+      ["Nevermind", 'ALL_OK']
     ]
     UI::QuickReplies.build(*replies)
   end
@@ -168,6 +171,9 @@ module Commands
     elsif @message.quick_reply == 'WRONG_CHOICES'
       trt = Rubotnik::WitUnderstander.build_trait_entity(:intent, 'or_question')
       ask_correct_entities(trt)
+    elsif @message.quick_reply == 'ALL_OK'
+      say "No problem."
+      stop_thread
     else
       say "Sorry! I can only learn if you correct me"
       stop_thread
@@ -190,7 +196,7 @@ module Commands
   end
 
   def correct_question_type
-    # retrieve original text from User
+    # retrieve original text from user's session
     original_text = @user.session[:original_text]
 
     # Guard for when we don't have quick replies
@@ -204,13 +210,13 @@ module Commands
     question = @message.quick_reply.downcase
     trait = Rubotnik::WitUnderstander.build_trait_entity(:intent, question)
 
-    # TODO: Answer "yes" or "no" right away
     # It's not an OR question, so we don't have to ask for entities
     if question != 'or_question'
       @nlu.train(original_text, trait_entity: trait)
       say "Thank you for cooperation! I just got a bit smarter"
+
       if question == 'yes_no_question'
-        say "By the way, the answer to your last question: #{%w[yes no].sample}"
+        say "By the way, answering your last question: #{%w[yes no].sample}"
       end
       stop_thread
       return
@@ -227,18 +233,23 @@ module Commands
     next_command :correct_entities
   end
 
-  # TODO: make sure it won't break if user does not follow
-  # 'or' or 'comma' format
   def correct_entities(*args)
     original_text = @user.session[:original_text]
     trait = @user.session[:trait]
-    choices = Rubotnik::WitUnderstander.build_word_entities(original_text,
-                                                            @message.text,
-                                                            :option)
-    @nlu.train(original_text, trait_entity: trait, word_entities: choices)
-    say "Thank you for cooperation! I just got a bit smarter"
-    say "By the way, the answer to your " \
-        "last question: #{choices.map {|h| h["value"]}.sample}"
+    #  See if user respected the format
+    input = @message.text
+    if input =~ /\w+(, | or )/
+     choices = Rubotnik::WitUnderstander.build_word_entities(original_text,
+                                                             input,
+                                                             :option)
+      @nlu.train(original_text, trait_entity: trait, word_entities: choices)
+      say "Thank you for cooperation! I just got a bit smarter"
+      say "By the way, answering your " \
+          "last question: #{choices.map {|h| h["value"]}.sample}"
+    else
+      say "Too bad, I can only learn if you use commas " \
+          "or 'or's to separate options. Try again later!"
+    end
     stop_thread
   end
 
