@@ -187,6 +187,9 @@ module Commands
     replies = [
       ['Multiple choice', 'OR_QUESTION'],
       ['Yes/No question', 'YES_NO_QUESTION'],
+      ['Who question', 'WHO_QUESTION'],
+      ['When question', 'WHEN_QUESTION'],
+      ['Where question', 'WHERE_QUESTION']
     ]
     UI::QuickReplies.build(*replies)
   end
