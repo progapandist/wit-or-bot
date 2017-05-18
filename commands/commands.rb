@@ -25,36 +25,32 @@ module Commands
     @message.mark_seen
     @message.typing_on
 
-    # Are we being greeted?
     # We need '&& return' to exit from the caller
     # if greeting/thanks/bare sentiment detected
-    react_to_greeting && return
-    # Are we being thanked?
-    react_to_thanks && return
+    react_to_greeting && return # Are we being greeted?
+    react_to_thanks && return # Are we being thanked?
     # Gauge sentiment. Make sure intents are otherwise absent in a phrase
     react_to_negative_sentiment && return
-    # Is the sentiment positive?
-    react_to_positive_sentiment && return
-    # Is the sentiment neutral?
-    react_to_neutral_sentiment && return
-    # Make sure user does not pry
-    avoid_personal_questions && return
+    react_to_positive_sentiment && return # Is the sentiment positive?
+    react_to_neutral_sentiment && return # Is the sentiment neutral?
+    avoid_personal_questions && return # Make sure user does not pry
 
-    # Non-question ruled out, we can
+    # Non-questions ruled out, we can
     # save a question to correct later, if needed
-    @user.session[:original_text] = @message.text
+    @user.session[:needs_correction] = @message.text
 
     # Act on a type of question
     unless act_on_question_types
-      # No known question types detected. Store unrecognized input in a session,
-      # go with training scenario.
-      @user.session[:original_text] = @message.text
+      # No known question types detected.
+      # Store unrecognized input in a session, start training scenario.
+      @user.session[:needs_correction] = @message.text
       say "Was that a question?", quick_replies: UI::QuickReplies.build(
         %w[Yes YES], %w[No NO], %w[Nevermind NEVERMIND]
       )
       next_command :handle_was_it_a_question
     end
 
+    # We're done replying
     @message.typing_off
   end
 
@@ -74,10 +70,10 @@ module Commands
   def react_to_negative_sentiment
     return false unless sentiment('negative') && intents_absent?
     say "I'm sorry, I'm still learning!"
-    if @user.session.key?(:original_text)
+    if @user.session.key?(:needs_correction)
       say "Did I get your last phrase wrong? " \
           "If I remember correctly, the phrase was: " \
-          "#{@user.session[:original_text]}",
+          "#{@user.session[:needs_correction]}",
           quick_replies: possible_error_replies
       next_command :start_correction
     end
@@ -109,8 +105,8 @@ module Commands
     when 'or_question' then handle_or_question
     when 'what_question' then handle_what_question
     when 'when_question' then handle_when_question
-    when 'where_question' then puts "where question"
-    when 'who_question' then puts "who question"
+    when 'where_question' then puts handle_where_question
+    when 'who_question' then puts handle_who_question
     else
       return false
     end
@@ -124,6 +120,14 @@ module Commands
 
   def handle_when_question
     say "When do you think? Use 'or' to separate options"
+  end
+
+  def handle_where_question
+    say "Where do you think? Use 'or' to separate options"
+  end
+
+  def handle_who_question
+    say "Who do you think? Use 'or' to separate options"
   end
 
   def handle_or_question
@@ -208,7 +212,7 @@ module Commands
           "Ask me a question!"
       # That was not a question, so we mark sentiment as neutral
       trait = Rubotnik::WitUnderstander.build_trait_entity(:sentiment, 'neutral')
-      @nlu.train(@user.session[:original_text], trait_entity: trait)
+      @nlu.train(@user.session[:needs_correction], trait_entity: trait)
       stop_thread
     elsif @message.quick_reply == 'NEVERMIND'
       say "All right then. I'll ignore it"
@@ -225,14 +229,12 @@ module Commands
 
   def correct_question_type
     # retrieve original text from user's session
-    original_text = @user.session[:original_text]
+    original_text = @user.session[:needs_correction]
 
     # Guard for when we don't have quick replies
-
-    # TODO: fix multiline
     unless @message.quick_reply
-      say 'You did not give me a chance to learn, \
-      but thanks for cooperation anyway!'
+      say 'You did not give me a chance to learn, ' \
+          'but thanks for cooperation anyway!'
       stop_thread
       return
     end
@@ -264,7 +266,7 @@ module Commands
   end
 
   def correct_entities(*args)
-    original_text = @user.session[:original_text]
+    original_text = @user.session[:needs_correction]
     trait = @user.session[:trait]
     #  See if user respected the format
     input = @message.text
