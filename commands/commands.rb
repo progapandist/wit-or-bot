@@ -6,9 +6,8 @@ require_relative '../ui/ui'
 # and will exist in a shared namespace.
 module Commands
 
-  def question_type(value)
-    ent_values = @nlu.entity_values(@message.text, :intent)
-    !ent_values.empty? && ent_values.include?(value)
+  def question_type
+    @nlu.entity_values(@message.text, :intent).first
   end
 
   def sentiment(value)
@@ -21,83 +20,100 @@ module Commands
   end
 
   # TODO: Break up into smaller methods
-  def nlu_handle_questions
+  def nlu_handle_input
     # Wit processing will take a while, so we want to show activity
     @message.mark_seen
     @message.typing_on
 
-    # We are being greeted
-    if @nlu.entities(@message.text).include?(:greetings) && intents_absent?
-      say "Hello! I can make decisions for you. Ask me a question"
-      return
-    end
-
-    # We are being thanked
-    if @nlu.entities(@message.text).include?(:thanks) && intents_absent?
-      say "You're welcome!"
-      return
-    end
-
+    # Are we being greeted?
+    # We need '&& return' to exit from the caller
+    # if greeting/thanks/bare sentiment detected
+    react_to_greeting && return
+    # Are we being thanked?
+    react_to_thanks && return
     # Gauge sentiment. Make sure intents are otherwise absent in a phrase
-    if sentiment('negative') && intents_absent?
-      # TODO: Only start the correction thread if the session has a question
-      say "I'm sorry, I'm still learning!"
-      if @user.session.key?(:original_text)
-        say "Did I get your last phrase wrong? " \
-            "If I remember correctly, the phrase was: " \
-            "#{@user.session[:original_text]}",
-            quick_replies: possible_error_replies
-        next_command :start_correction
-      end
-      return
-    end
-
-    if sentiment('positive') && intents_absent?
-      say "😎 Let's do another one!"
-      return
-    end
-
-    if sentiment('neutral') && intents_absent?
-      say "Cool. Let's do another one."
-      return
-    end
-
+    react_to_negative_sentiment && return
+    # Is the sentiment positive?
+    react_to_positive_sentiment && return
+    # Is the sentiment neutral?
+    react_to_neutral_sentiment && return
     # Make sure user does not pry
-    if @message.text =~ /\byou[a-zA-Z']{,3}\b/i
-      say "We are not talking about me, sorry."
-      return
-    end
+    avoid_personal_questions && return
 
     # Non-question ruled out, we can
     # save a question to correct later, if needed
     @user.session[:original_text] = @message.text
 
-    # Reacting on different question types
-    if question_type('yes_no_question')
-      say %w[Yes No].sample
-    elsif question_type('or_question')
-      handle_or_question
-    elsif question_type('what_question')
-      puts "what question"
-      handle_what_question
-    elsif question_type('when_question')
-      puts "when question"
-      handle_when_question
-
-    # TODO: implement
-    elsif question_type('where_question')
-      puts "where question"
-    elsif question_type('who_question')
-      puts "who question"
-
-    else # No question types detected
-      # store unrecognized input in a session
+    # Act on a type of question
+    unless act_on_question_types
+      # No known question types detected. Store unrecognized input in a session,
+      # go with training scenario.
       @user.session[:original_text] = @message.text
-      say "Was that a question?",
-      quick_replies: UI::QuickReplies.build(%w[Yes YES], %w[No NO])
+      say "Was that a question?", quick_replies: UI::QuickReplies.build(
+        %w[Yes YES], %w[No NO], %w[Nevermind NEVERMIND]
+      )
       next_command :handle_was_it_a_question
     end
+
     @message.typing_off
+  end
+
+  # TODO: separate method for inclusion/abscence check
+  def react_to_greeting
+    return false unless @nlu.entities(@message.text).include?(:greetings) && intents_absent?
+    say "Hello! I can make decisions for you. Ask me a question"
+    true
+  end
+
+  def react_to_thanks
+    return false unless @nlu.entities(@message.text).include?(:thanks) && intents_absent?
+    say "You're welcome!"
+    true
+  end
+
+  def react_to_negative_sentiment
+    return false unless sentiment('negative') && intents_absent?
+    say "I'm sorry, I'm still learning!"
+    if @user.session.key?(:original_text)
+      say "Did I get your last phrase wrong? " \
+          "If I remember correctly, the phrase was: " \
+          "#{@user.session[:original_text]}",
+          quick_replies: possible_error_replies
+      next_command :start_correction
+    end
+    true
+  end
+
+  def react_to_positive_sentiment
+    return false unless sentiment('positive') && intents_absent?
+    say "😎 Let's do another one!"
+    true
+  end
+
+  def react_to_neutral_sentiment
+    return false unless sentiment('neutral') && intents_absent?
+    say "Cool. Let's do another one."
+    true
+  end
+
+  def avoid_personal_questions
+    return false unless @message.text =~ /\byou[a-zA-Z']{,3}\b/i
+    say "We are not talking about me, sorry."
+    true
+  end
+
+  # Reacting on different question types
+  def act_on_question_types
+    case question_type
+    when 'yes_no_question' then say %w[Yes No].sample
+    when 'or_question' then handle_or_question
+    when 'what_question' then handle_what_question
+    when 'when_question' then handle_when_question
+    when 'where_question' then puts "where question"
+    when 'who_question' then puts "who question"
+    else
+      return false
+    end
   end
 
   # HANDLERS FOR QUESTIONS TYPES
@@ -190,6 +206,12 @@ module Commands
     if @message.quick_reply == 'NO'
       say "I wish I could tell you a joke, but I don't know how to do it yet. " \
           "Ask me a question!"
+      # That was not a question, so we mark sentiment as neutral
+      trait = Rubotnik::WitUnderstander.build_trait_entity(:sentiment, 'neutral')
+      @nlu.train(@user.session[:original_text], trait_entity: trait)
+      stop_thread
+    elsif @message.quick_reply == 'NEVERMIND'
+      say "All right then. I'll ignore it"
       stop_thread
     else
       ask_correct_question_type
@@ -206,6 +228,8 @@ module Commands
     original_text = @user.session[:original_text]
 
     # Guard for when we don't have quick replies
+
+    # TODO: fix multiline
     unless @message.quick_reply
       say 'You did not give me a chance to learn, \
       but thanks for cooperation anyway!'

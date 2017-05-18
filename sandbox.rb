@@ -37,3 +37,5 @@ def complement_non_verbs(string)
 end
 
 # p pos_pick_answer(answer)
+
+p understander.entity_values("Apples or oranges", :intent)
