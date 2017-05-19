@@ -40,15 +40,7 @@ module Commands
     @user.session[:needs_correction] = @message.text
 
     # Act on a type of question
-    unless act_on_question_types
-      # No known question types detected.
-      # Store unrecognized input in a session, start training scenario.
-      @user.session[:needs_correction] = @message.text
-      say "Was that a question?", quick_replies: UI::QuickReplies.build(
-        %w[Yes YES], %w[No NO], %w[Nevermind NEVERMIND]
-      )
-      next_command :handle_was_it_a_question
-    end
+    act_on_question_types
 
     # We're done replying
     @message.typing_off
@@ -108,7 +100,13 @@ module Commands
     when 'where_question' then puts handle_where_question
     when 'who_question' then puts handle_who_question
     else
-      return false
+      # No known question types detected.
+      # Store unrecognized input in a session, start training scenario.
+      @user.session[:needs_correction] = @message.text
+      say "Was that a question?", quick_replies: UI::QuickReplies.build(
+        %w[Yes YES], %w[No NO], %w[Nevermind NEVERMIND]
+      )
+      next_command :handle_was_it_a_question
     end
   end
 
