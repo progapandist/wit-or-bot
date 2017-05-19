@@ -58,7 +58,8 @@ module Commands
   # TODO: separate method for inclusion/abscence check
   def react_to_greeting
     return false unless @nlu.entities(@message.text).include?(:greetings) && intents_absent?
-    say 'Hello! I can make decisions for you. Ask me a question'
+    say 'Hello! I can make decisions for you :) ' \
+        'Ask me any yes/no question or the one that implies multiple choice.'
     true
   end
 
