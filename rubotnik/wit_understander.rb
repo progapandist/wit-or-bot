@@ -70,7 +70,7 @@ module Rubotnik
         {
           "entity" => entity_name.to_s,
           "value" => word
-        }.merge(substring_offset(string, word)) # TODO: Do I need to build "start"/"end" at all?
+        }.merge(substring_offset(string, word))
       end
     end
 

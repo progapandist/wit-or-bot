@@ -6,9 +6,8 @@ require_relative '../ui/ui'
 # and will exist in a shared namespace.
 module Commands
 
-  def question_type(value)
-    ent_values = @nlu.entity_values(@message.text, :intent)
-    !ent_values.empty? && ent_values.include?(value)
+  def question_type
+    @nlu.entity_values(@message.text, :intent).first
   end
 
   def sentiment(value)
@@ -20,75 +19,104 @@ module Commands
     @nlu.entity_values(@message.text, :intent).empty?
   end
 
-  # TODO: Break up into smaller methods 
-  def nlu_handle_questions
+  # TODO: Break up into smaller methods
+  def nlu_handle_input
     # Wit processing will take a while, so we want to show activity
     @message.mark_seen
     @message.typing_on
+    return if acted_on_non_questions?
 
-    # We are being greeted
-    if @nlu.entities(@message.text).include?(:greetings)
-      say "Hello! I can make decisions for you. Ask me a question"
-      return
-    end
-
-    # We are being thanked
-    if @nlu.entities(@message.text).include?(:thanks)
-      say "You're welcome!"
-      return
-    end
-
-    # Gauge sentiment. Make sure intents are otherwise absent in a phrase
-    if sentiment('negative') && intents_absent?
-      # TODO: Only start the correction thread if the session has a question
-      say "I'm sorry, I'm still learning. Did I get your last phrase wrong? " \
-          "The phrase was: #{@user.session[:original_text]}",
-          quick_replies: possible_error_replies
-
-      next_command :start_correction
-      return
-    end
-
-    if sentiment('positive') && intents_absent?
-      say "😎 Let's do another one!"
-      return
-    end
-
-    if sentiment('neutral') && intents_absent?
-      say "Cool. Let's do another one."
-      return
-    end
-
-    # Non-question ruled out, we can
+    # Non-questions ruled out, we can
     # save a question to correct later, if needed
-    @user.session[:original_text] = @message.text
+    @user.session[:needs_correction] = @message.text
+    # Act on a type of question
+    act_on_question_types
 
-    # Reacting on different question types
-    if question_type('yes_no_question')
-      say %w[Yes No].sample
-    elsif question_type('or_question')
-      handle_or_question
-    elsif question_type('what_question')
-      puts "what question"
-      handle_what_question
-    elsif question_type('when_question')
-      puts "when question"
-      handle_when_question
+    # We're done replying
+    @message.typing_off
+  end
 
-    # TODO: implement
-    elsif question_type('where_question')
-      puts "where question"
-    elsif question_type('who_question')
-      puts "who question"
+  def acted_on_non_questions?
+    any_method_returned_true? do
+      next if react_to_greeting # break out of the block and deliver value
+      next if react_to_thanks
+      next if react_to_negative_sentiment
+      next if react_to_positive_sentiment
+      next if react_to_neutral_sentiment
+      next if avoid_personal_questions
+      true # we need this to return a boolean from the block anyway
+    end
+  end
 
-    else # No question types detected
-      # store unrecognized input in a session
-      @user.session[:original_text] = @message.text
-      say "Was that a question?",
-      quick_replies: UI::QuickReplies.build(%w[Yes YES], %w[No NO])
+  # Fancy helper. Kind of mindfuck.
+  def any_method_returned_true?
+    # will return true if one of block methods returns true
+    # when called with "next if"
+    true unless yield # AAAAAAAA!
+  end
+
+  # TODO: separate method for inclusion/abscence check
+  def react_to_greeting
+    return false unless @nlu.entities(@message.text).include?(:greetings) && intents_absent?
+    say 'Hello! I can make decisions for you. Ask me a question'
+    true
+  end
+
+  def react_to_thanks
+    return false unless @nlu.entities(@message.text).include?(:thanks) && intents_absent?
+    say "You're welcome!"
+    true
+  end
+
+  def react_to_negative_sentiment
+    return false unless sentiment('negative') && intents_absent?
+    say "I'm sorry, I'm still learning!"
+    if @user.session.key?(:needs_correction)
+      say 'Did I get your last question wrong? ' \
+          'If I remember correctly, the question was: ' \
+          "#{@user.session[:needs_correction]}",
+          quick_replies: possible_error_replies
+      next_command :start_correction
+    end
+    true
+  end
+
+  def react_to_positive_sentiment
+    return false unless sentiment('positive') && intents_absent?
+    say "😎 Let's do another one!"
+    true
+  end
+
+  def react_to_neutral_sentiment
+    return false unless sentiment('neutral') && intents_absent?
+    say "Cool. Let's do another one."
+    true
+  end
+
+  def avoid_personal_questions
+    return false unless @message.text =~ /\byou[a-zA-Z']{,3}\b/i
+    say 'We are not talking about me, sorry.'
+    true
+  end
+
+  # Reacting on different question types
+  def act_on_question_types
+    case question_type
+    when 'yes_no_question' then say %w[Yes No].sample
+    when 'or_question' then handle_or_question
+    when 'what_question' then handle_what_question
+    when 'when_question' then handle_when_question
+    when 'where_question' then puts handle_where_question
+    when 'who_question' then puts handle_who_question
+    else
+      # No known question types detected.
+      # Store unrecognized input in a session, start training scenario.
+      @user.session[:needs_correction] = @message.text
+      say 'Was that a question?', quick_replies: UI::QuickReplies.build(
+        %w[Yes YES], %w[No NO], %w[Nevermind NEVERMIND]
+      )
       next_command :handle_was_it_a_question
     end
-    @message.typing_off
   end
 
   # HANDLERS FOR QUESTIONS TYPES
@@ -99,6 +127,14 @@ module Commands
 
   def handle_when_question
     say "When do you think? Use 'or' to separate options"
+  end
+
+  def handle_where_question
+    say "Where do you think? Use 'or' to separate options"
+  end
+
+  def handle_who_question
+    say "Who do you think? Use 'or' to separate options"
   end
 
   def handle_or_question
@@ -124,22 +160,22 @@ module Commands
   end
 
   def complement_verbs(string)
-    random = ["You should",
+    random = ['You should',
               "If I were you, I'd",
-              "You better", "Certainly",
-              "Probably", "Definitely",
-              "I advise you to",
-              "I urge you to"].sample
+              'You better', 'Certainly',
+              'Probably', 'Definitely',
+              'I advise you to',
+              'I urge you to'].sample
     random + " " + string
   end
 
   def complement_non_verbs(string)
-    random = ["Go with",
+    random = ['Go with',
               "I'd pick",
-              "Settle on",
-              "Definitely",
-              "Probably",
-              "Absolutely"].sample
+              'Settle on',
+              'Definitely',
+              'Probably',
+              'Absolutely'].sample
     random + " " + string
   end
 
@@ -149,7 +185,7 @@ module Commands
     replies = [
       ['Wrong question type', 'WRONG_TYPE'],
       ['Wrong choices', 'WRONG_CHOICES'],
-      ["It's OK", 'ALL_OK']
+      ['Nevermind', 'ALL_OK']
     ]
     UI::QuickReplies.build(*replies)
   end
@@ -158,6 +194,9 @@ module Commands
     replies = [
       ['Multiple choice', 'OR_QUESTION'],
       ['Yes/No question', 'YES_NO_QUESTION'],
+      ['Who question', 'WHO_QUESTION'],
+      ['When question', 'WHEN_QUESTION'],
+      ['Where question', 'WHERE_QUESTION']
     ]
     UI::QuickReplies.build(*replies)
   end
@@ -168,8 +207,11 @@ module Commands
     elsif @message.quick_reply == 'WRONG_CHOICES'
       trt = Rubotnik::WitUnderstander.build_trait_entity(:intent, 'or_question')
       ask_correct_entities(trt)
+    elsif @message.quick_reply == 'ALL_OK'
+      say 'No problem.'
+      stop_thread
     else
-      say "Sorry! I can only learn if you correct me"
+      say 'Sorry! I can only learn if you correct me'
       stop_thread
     end
   end
@@ -177,7 +219,13 @@ module Commands
   def handle_was_it_a_question
     if @message.quick_reply == 'NO'
       say "I wish I could tell you a joke, but I don't know how to do it yet. " \
-          "Ask me a question!"
+          'Ask me a question!'
+      # That was not a question, so we mark sentiment as neutral
+      trait = Rubotnik::WitUnderstander.build_trait_entity(:sentiment, 'neutral')
+      @nlu.train(@user.session[:needs_correction], trait_entity: trait)
+      stop_thread
+    elsif @message.quick_reply == 'NEVERMIND'
+      say "All right then. I'll ignore it"
       stop_thread
     else
       ask_correct_question_type
@@ -190,13 +238,13 @@ module Commands
   end
 
   def correct_question_type
-    # retrieve original text from User
-    original_text = @user.session[:original_text]
+    # retrieve original text from user's session
+    original_text = @user.session[:needs_correction]
 
     # Guard for when we don't have quick replies
     unless @message.quick_reply
-      say 'You did not give me a chance to learn, \
-      but thanks for cooperation anyway!'
+      say 'You did not give me a chance to learn, ' \
+          'but thanks for cooperation anyway!'
       stop_thread
       return
     end
@@ -204,13 +252,13 @@ module Commands
     question = @message.quick_reply.downcase
     trait = Rubotnik::WitUnderstander.build_trait_entity(:intent, question)
 
-    # TODO: Answer "yes" or "no" right away
     # It's not an OR question, so we don't have to ask for entities
     if question != 'or_question'
       @nlu.train(original_text, trait_entity: trait)
-      say "Thank you for cooperation! I just got a bit smarter"
+      say 'Thank you for cooperation! I just got a bit smarter'
+
       if question == 'yes_no_question'
-        say "By the way, the answer to your last question: #{%w[yes no].sample}"
+        say "By the way, answering your last question: #{%w[yes no].sample}"
       end
       stop_thread
       return
@@ -227,18 +275,23 @@ module Commands
     next_command :correct_entities
   end
 
-  # TODO: make sure it won't break if user does not follow
-  # 'or' or 'comma' format
-  def correct_entities(*args)
-    original_text = @user.session[:original_text]
+  def correct_entities
+    original_text = @user.session[:needs_correction]
     trait = @user.session[:trait]
-    choices = Rubotnik::WitUnderstander.build_word_entities(original_text,
-                                                            @message.text,
-                                                            :option)
-    @nlu.train(original_text, trait_entity: trait, word_entities: choices)
-    say "Thank you for cooperation! I just got a bit smarter"
-    say "By the way, the answer to your " \
-        "last question: #{choices.map {|h| h["value"]}.sample}"
+    #  See if user respected the format
+    input = @message.text
+    if input =~ /\w+(, | or )/
+     choices = Rubotnik::WitUnderstander.build_word_entities(original_text,
+                                                             input,
+                                                             :option)
+      @nlu.train(original_text, trait_entity: trait, word_entities: choices)
+      say 'Thank you for cooperation! I just got a bit smarter'
+      say 'By the way, answering your ' \
+          "last question: #{choices.map {|h| h["value"]}.sample}"
+    else
+      say 'Too bad, I can only learn if you use commas ' \
+          "or 'or's to separate options. Try again later!"
+    end
     stop_thread
   end
 
