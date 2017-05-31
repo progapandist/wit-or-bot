@@ -63,9 +63,11 @@ module Rubotnik
     # takes an original string, a string of substrings
     # and an entity name as symbol, separates sunstrings on 'OR' or ','
     # returns an array of "entity" hashes
-    def self.build_word_entities(string, substrings, entity_name)
-      words = substrings.split(", ") # split on comma if not separated by 'or's
-      words = substrings.split(" or ") if substrings =~ / or /
+
+    # TODO: A bug when multiple words with mixed spaces and commas
+
+    # Expects an original name, an array of words and a name of correct entity
+    def self.build_word_entities(string, words, entity_name)
       words.each.map do |word|
         {
           "entity" => entity_name.to_s,

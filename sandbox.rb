@@ -1,5 +1,6 @@
 require_relative 'rubotnik/wit_understander'
 require_relative 'rubotnik/tagger'
+require_relative 'ui/quick_replies'
 
 understander = Rubotnik::WitUnderstander.new("ZI243GVZYMZFWGIFMGI4PNUNLGVFLFUZ")
 
@@ -9,7 +10,7 @@ understander = Rubotnik::WitUnderstander.new("ZI243GVZYMZFWGIFMGI4PNUNLGVFLFUZ")
 
 question = "thanks"
 
-p understander.full_response(question)
+# p understander.full_response(question)
 
 # answer = understander.entity_values(question, :option).sample
 
@@ -38,4 +39,6 @@ end
 
 # p pos_pick_answer(answer)
 
-p understander.entity_values("Apples or oranges", :intent)
+# understander.entity_values("Apples or oranges", :intent)
+
+p UI::QuickReplies.build("Yes", "No")

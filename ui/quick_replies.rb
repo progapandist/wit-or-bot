@@ -6,6 +6,7 @@ module UI
         case reply
         when Hash then build_from_hash(reply)
         when Array then build_from_array(reply)
+        when String then build_from_string(reply)
         else
           raise ArgumentError, 'Arguments should be hashes or arrays of two'
         end
@@ -23,6 +24,10 @@ module UI
         raise ArgumentError, error_msg unless reply.key?(:payload)
       end
       reply
+    end
+
+    private_class_method def self.build_from_string(reply)
+      build_from_array([reply, reply.upcase])
     end
 
     private_class_method def self.build_from_array(reply)
